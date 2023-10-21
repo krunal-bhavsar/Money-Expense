@@ -1,0 +1,258 @@
+import React, { useState, useEffect } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  Image,
+  Button,
+  ScrollView,
+  FlatList,
+  TouchableOpacity,
+} from 'react-native';
+import logoutButton from './assets/icons/logout.jpeg'; 
+
+
+export default function HomeScreen({ navigation }) {
+  const [expenses, setExpenses] = useState([]);
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
+  const [payer, setPayer] = useState('');
+  const [splitWith, setSplitWith] = useState('');
+  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [isSortButtonDisabled, setIsSortButtonDisabled] = useState(true);
+  const [sortAsc, setSortAsc] = useState(true);
+
+  const addExpense = () => {
+    if (description && amount && payer && splitWith) {
+      const newExpense = {
+        id: expenses.length.toString(),
+        description,
+        amount: parseFloat(amount),
+        payer,
+        splitWith: splitWith.split(',').map((friend) => friend.trim()),
+        date: new Date(),
+      };
+      setExpenses([...expenses, newExpense]);
+      setDescription('');
+      setAmount('');
+      setPayer('');
+      setSplitWith('');
+      setTotalExpenses(totalExpenses + newExpense.amount);
+      setIsSortButtonDisabled(false);
+    }
+  };
+
+  const shareExpense = (expense) => {
+    const expenseDetails = `Expense Details: \nDescription: ${expense.description}\nAmount: $${expense.amount.toFixed(2)}\nPaid by: ${expense.payer}\nSplit with: ${expense.splitWith.join(', ')}\nDate: ${expense.date.toLocaleDateString()}`;
+
+    if (navigator.share) {
+      navigator
+        .share({ title: 'Share Expense', text: expenseDetails })
+        .then(() => console.log('Shared successfully'))
+        .catch((error) => console.error('Share failed:', error));
+    } else {
+      alert(`Expenses shared`);
+    }
+  };
+
+  const logout = () => {
+    navigation.navigate('LoginScreen');
+  };
+
+  const viewFriendList = () => {
+    navigation.navigate('ViewFriendList');
+  };
+
+  const deleteExpense = (id) => {
+    const deletedExpense = expenses.find((expense) => expense.id === id);
+    if (deletedExpense) {
+      setExpenses(expenses.filter((expense) => expense.id !== id));
+      setTotalExpenses(totalExpenses - deletedExpense.amount);
+    }
+    if (expenses.length === 0) {
+      setIsSortButtonDisabled(true);
+    }
+  };
+
+  const sortExpenses = () => {
+    const sortedExpenses = expenses.slice().sort((a, b) => {
+      if (sortAsc) {
+        return a.date - b.date;
+      } else {
+        return b.date - a.date;
+      }
+    });
+    setExpenses(sortedExpenses);
+    setSortAsc(!sortAsc);
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+       <TouchableOpacity
+        onPress={logout}
+        style={styles.logoutButtonContainer} // Style for the container
+      >
+        <Image source={require('./assets/icons/logout.jpeg')} style={styles.logoutButton} />
+      </TouchableOpacity>
+      <Button title='View Friend List ' onPress={viewFriendList} />
+      <View style={styles.headerContainer}>
+        <Text style={styles.header}>Money Expense Splitter</Text>
+        <Image
+          source={require('./assets/icons/split.jpeg') }
+          style={styles.headerImage}
+        />
+      </View>
+       <View style={styles.space}/>
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder='Description'
+          onChangeText={(text) => setDescription(text)}
+          value={description}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder='Amount'
+          onChangeText={(text) => setAmount(text)}
+          value={amount}
+          keyboardType='numeric'
+        />
+        <TextInput
+          style={styles.input}
+          placeholder='Payer'
+          onChangeText={(text) => setPayer(text)}
+          value={payer}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder='Split With (comma separated)'
+          onChangeText={(text) => setSplitWith(text)}
+          value={splitWith}
+        />
+        <Button title='Add Expense' onPress={addExpense} />
+      </View>
+      <View style={styles.expenseListContainer}>
+        <Text style={styles.expenseListHeader}>Earlier Added Expenses</Text>
+        <Button
+          title={`Sort by Date ${sortAsc ? 'Asc' : 'Desc'}`}
+          onPress={sortExpenses}
+          disabled={isSortButtonDisabled}
+        />
+        <FlatList
+          style={styles.expenseList}
+          data={expenses}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.expenseItem}>
+              <Text>Description: {item.description}</Text>
+              <Text>Amount: ${item.amount.toFixed(2)}</Text>
+              <Text>Paid by: {item.payer}</Text>
+              <Text>Split with: {item.splitWith.join(', ')}</Text>
+              <Text>Date: {item.date.toLocaleDateString()}</Text>
+              <TouchableOpacity
+                style={styles.shareButton}
+                onPress={() => shareExpense(item)}
+              >
+                <Text style={styles.shareButtonText}>Share</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => deleteExpense(item.id)}
+              >
+                <Text style={styles.deleteButtonText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        />
+        <Text style={styles.totalExpenses}>
+          Total Expenses: ${totalExpenses.toFixed(2)}
+        </Text>
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  header: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: 'red',
+    marginBottom: 20,
+  },
+  headerImage: {
+    width: 100,
+    height: 100,
+    marginLeft:100,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  inputContainer: {
+    width: '90%',
+    marginBottom: 20,
+  },
+  input: {
+    width: '100%',
+    borderBottomWidth: 1,
+    marginBottom: 10,
+  },
+  expenseListContainer: {
+    width: '90%',
+  },
+  expenseListHeader: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  expenseItem: {
+    borderBottomWidth: 1,
+    marginBottom: 10,
+    paddingVertical: 5,
+  },
+  deleteButton: {
+    backgroundColor: 'red',
+    padding: 5,
+    borderRadius: 5,
+    marginTop: 5,
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    color: 'white',
+  },
+  totalExpenses: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 20,
+  },
+  shareButton: {
+    backgroundColor: 'green',
+    padding: 5,
+    borderRadius: 5,
+     width: '100%', 
+    marginTop: 5,
+    alignItems: 'center',
+  },
+  shareButtonText: {
+    color: 'white',
+  },
+  logoutButtonContainer: {
+    position: 'absolute', 
+    top: 30, 
+    right: 10, 
+  },
+  
+  logoutButton: {
+    width: 80,
+    height: 80,
+  },
+     space: {
+    width: 20, 
+    height: 20, 
+  },
+});
